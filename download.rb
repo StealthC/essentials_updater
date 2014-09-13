@@ -1,7 +1,10 @@
 require 'net/http'
 require 'uri'
+require 'progressbar'
+require 'nokogiri'
+require 'open-uri'
 
-class Download
+class FileDownload
   attr_accessor :link, :filename, :folder
   def initialize(link, folder, filename)
     @link = link
@@ -11,36 +14,42 @@ class Download
   def download
     #Verifica se o arquivo já existe
     #Verifica se a versão que queremos baixar é igual a que já temos
-    puts @link
+    puts "Baixando #{@filename} para #{folder}"
     uri = URI.parse(@link)
     FileUtils.mkdir_p(@folder) unless File.exists?(@folder)
+    size = 0
+    #verifica se o arquivo já existe
+    pathfile = File.join(@folder, @filename)
+    localsize = File.size?(pathfile)
     Net::HTTP.start(uri.host) do |http|
+      #tenta descobrir o tamanho do arquivo
       response = http.request_head(@link)
       size = response['content-length'].to_i
-      #verifica se o arquivo já existe
-      pathfile = File.join(@folder, @filename)
-      localsize = File.size?(pathfile)
-      unless size == localsize
-        if localsize.nil?
-          puts "O arquivo ainda não foi baixado"
-        else
-          puts "Foi encontrado uma versão mais nova do arquivo"
-          File.delete(pathfile)
-        end
-        open(pathfile, 'wb') do |file|
-          file << open(@link).read
-        end
+    end
+    unless size == localsize
+      if localsize.nil?
+        puts "O arquivo ainda não foi baixado"
       else
-        puts "O arquivo já existe, e é esse mesmo"
+        puts "Foi encontrado uma versão mais nova do arquivo"
+        File.delete(pathfile)
       end
+      open(@link) {|f|
+        File.open(pathfile,"wb") do |file|
+          file.puts f.read
+        end
+      }
+    else
+      puts "O arquivo já existe, e é esse mesmo"
     end
   end
 end
 
-require 'nokogiri'
-require 'open-uri'
-doc = Nokogiri::HTML(open('http://www.bleepingcomputer.com/download/rkill/dl/10/'))
-link = doc.css("div.dl_content p a").first['href']
-rkill = Download.new(link, "rkill", "rkill.exe")
-puts rkill.inspect
-rkill.download
+
+class BleepingComputerDownload < FileDownload
+  def initialize(baseurl, folder, filename)
+    doc = Nokogiri::HTML(open(baseurl))
+    @link = doc.css("div.dl_content p a").first['href']
+    @folder = folder
+    @filename = filename
+  end
+end

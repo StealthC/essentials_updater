@@ -4,9 +4,11 @@ GEM
     mini_portile (0.6.0)
     nokogiri (1.6.3.1-x86-mingw32)
       mini_portile (= 0.6.0)
+    progressbar (0.21.0)
 
 PLATFORMS
   x86-mingw32
 
 DEPENDENCIES
   nokogiri (~> 1.6.3.1)
+  progressbar (~> 0.21.0)
